@@ -1,0 +1,140 @@
+# based on https://github.com/bitnami/containers/tree/main/bitnami/discourse
+
+version: "3.8"
+
+x-network: &network
+  networks:
+    discourse:
+
+services:
+  {{postgres_host}}:
+    container_name: {{postgres_host}}
+    image: docker.io/bitnami/postgresql:11
+    restart: always
+    volumes:
+      - ${PWD}/data/postgresql_data:/bitnami/postgresql
+    environment:
+      - POSTGRESQL_USERNAME={{postgres_user}}
+      - POSTGRESQL_DATABASE={{postgres_db}}
+      - POSTGRES_PASSWORD={{postgres_password}}
+    <<: *network
+
+  {{redis_host}}:
+    image: docker.io/bitnami/redis:7.0
+    container_name:: {{redis_host}}
+    restart: always
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - '${PWD}/data/redis_data:/bitnami/redis'
+    <<: *network
+
+  discourse:
+    image: docker.io/bitnami/discourse:2
+    ports:
+      - '{{discourse_port}}:{{discourse_port}}'
+    restart: always
+    volumes:
+      - '${PWD}/data/discourse_data:/bitnami/discourse'
+    depends_on:
+      - postgresql
+      - redis
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - DISCOURSE_HOST={{discourse_host}}
+      - DISCOURSE_DATABASE_HOST={{postgres_host}}
+      - DISCOURSE_DATABASE_PORT_NUMBER={{postgres_port}}
+      - DISCOURSE_DATABASE_USER={{postgres_user}}
+      - DISCOURSE_DATABASE_NAME={{postgres_db}}
+      - DISCOURSE_DATABASE_PASSWORD={{postgres_password}}
+      - DISCOURSE_REDIS_HOST={{redis_host}}
+      - DISCOURSE_REDIS_PORT_NUMBER={{redis_port}}
+      - POSTGRESQL_CLIENT_POSTGRES_USER=postgres
+      - POSTGRESQL_CLIENT_CREATE_DATABASE_NAME={{postgres_db}}
+      - POSTGRESQL_CLIENT_CREATE_DATABASE_EXTENSIONS=hstore,pg_trgm
+      # - DISCOURSE_SMTP_HOST={{smtp_host}}
+      # - DISCOURSE_SMTP_PORT={{smtp_port}}
+      # - DISCOURSE_SMTP_USER={{email}}
+      # - DISCOURSE_SMTP_PASSWORD={{smtp_password}}
+      # - DISCOURSE_SMTP_PROTOCOL={{smtp_protocol}}
+    <<: *network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.discourse.rule=Host(`{{discourse_host}}`)
+      - traefik.http.routers.discourse.tls=true
+      - traefik.http.routers.discourse.tls.certresolver=le
+      
+  sidekiq:
+    image: docker.io/bitnami/discourse:2
+    depends_on:
+      - discourse
+    restart: always
+    volumes:
+      - '${PWD}/data/sidekiq_data:/bitnami/discourse'
+    command: /opt/bitnami/scripts/discourse-sidekiq/run.sh
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+      - DISCOURSE_HOST={{discourse_host}}
+      - DISCOURSE_DATABASE_HOST={{postgres_host}}
+      - DISCOURSE_DATABASE_PORT_NUMBER={{postgres_port}}
+      - DISCOURSE_DATABASE_USER={{postgres_user}}
+      - DISCOURSE_DATABASE_NAME={{postgres_db}}
+      - DISCOURSE_DATABASE_PASSWORD={{postgres_password}}
+      - DISCOURSE_REDIS_HOST={{redis_host}}
+      - DISCOURSE_REDIS_PORT_NUMBER={{redis_port}}
+      # - DISCOURSE_SMTP_HOST={{smtp_host}}
+      # - DISCOURSE_SMTP_PORT={{smtp_port}}
+      # - DISCOURSE_SMTP_USER={{email}}
+      # - DISCOURSE_SMTP_PASSWORD={{smtp_password}}
+      # - DISCOURSE_SMTP_PROTOCOL={{smtp_protocol}}
+    <<: *network
+
+  traefik:
+    container_name: traefik
+    image: {{traefik_image}}:{{traefik_version}}
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--certificatesResolvers.le.acme.email={{email}}"
+      - "--certificatesResolvers.le.acme.storage=acme.json"
+      - "--certificatesResolvers.le.acme.tlsChallenge=true"
+      - "--certificatesResolvers.le.acme.httpChallenge=true"
+      - "--certificatesResolvers.le.acme.httpChallenge.entryPoint=web"
+      # Metrics
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.entryPoint=metrics"
+      - "--entryPoints.metrics.address=:8082"
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./acme.json:/acme.json
+    labels:
+      - traefik.enable=true
+      # Redirect all HTTP to HTTPS permanently
+      - traefik.http.routers.http_catchall.rule=HostRegexp(`{any:.+}`)
+      - traefik.http.routers.http_catchall.entrypoints=web
+      - traefik.http.routers.http_catchall.middlewares=https_redirect
+      - traefik.http.middlewares.https_redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https_redirect.redirectscheme.permanent=true
+      # Traefik dashboard
+      - traefik.http.routers.traefik.rule=Host(`{{traefik_host}}`)
+      - traefik.http.routers.traefik.entrypoints=websecure
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.tls.certresolver=le
+      - "traefik.http.middlewares.basic-auth.basicauth.users=admin:$$apr1$$jtkrgano$$SeKqInRVXEzuCp1MVM6y91"
+      - traefik.http.routers.traefik.middlewares=basic-auth
+      # Middlewares
+      - traefik.http.middlewares.limit.buffering.maxRequestBodyBytes=100000000 # 100MB request body limit
+      - traefik.http.middlewares.limit.ratelimit.average=1000 # 1000 request per second limit
+    <<: *network
+
+networks:
+  discourse:

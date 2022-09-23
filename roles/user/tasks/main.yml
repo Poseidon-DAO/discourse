@@ -1,0 +1,26 @@
+---
+- name: Create dao group
+  group:
+    name: "{{ current_group }}"
+    state: present
+
+- name: Create dao user
+  user:
+    name: "{{ current_user }}"
+    shell: /bin/bash
+    groups: 
+      - "{{ current_group }}"
+    state: present
+
+- name: Configure sudo for the dao user
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    line: "{{ current_user }}   ALL=(ALL:ALL) NOPASSWD: ALL"
+    validate: "/usr/sbin/visudo -cf %s"
+
+# - name: Set authorized key for user dao copying it from current user
+#   authorized_key:
+#     user: "{{ current_user }}"
+#     state: present
+#     key: "{{ lookup('file', 'files/id_rsa_dao.pub') }}"

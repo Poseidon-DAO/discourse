@@ -1,0 +1,24 @@
+---
+- name: Install common packages
+  apt:
+    name:
+      - build-essential
+      - curl
+      - git
+      - htop
+      - iotop
+      - ctop
+      - libssl-dev
+      - make
+      - python3-pip
+      - python3
+      - tmux
+      - vim
+    state: present
+    update_cache: yes
+
+- name: Ensure python docker and docker-compose is installed
+  pip:
+    name:
+      - docker
+      - docker-compose
