@@ -1,0 +1,21 @@
+---
+roles:
+  - src: geerlingguy.docker
+    name: docker
+    version: 2.9.0
+
+  - src: geerlingguy.pip
+    name: pip
+    version: 2.0.0
+
+  - src: geerlingguy.nodejs
+    name: nodejs
+    version: 5.1.1
+
+  - src: nickhammond.logrotate
+    name: logrotate
+    version: v0.0.5
+
+collections:
+  - amazon.aws
+  - community.postgresql
