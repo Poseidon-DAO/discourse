@@ -4,3 +4,5 @@
 # ignore vault password
 vault_password
 vault-password
+
+data/

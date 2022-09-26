@@ -21,43 +21,52 @@ services:
 
   {{redis_host}}:
     image: docker.io/bitnami/redis:7.0
-    container_name:: {{redis_host}}
+    container_name: {{redis_host}}
     restart: always
     environment:
-      # ALLOW_EMPTY_PASSWORD is recommended only for development.
-      - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_PASSWORD={{redis_password}}
     volumes:
-      - '${PWD}/data/redis_data:/bitnami/redis'
+      - ${PWD}/data/redis_data:/bitnami/redis
     <<: *network
 
   discourse:
     image: docker.io/bitnami/discourse:2
+    container_name: discourse
     ports:
-      - '{{discourse_port}}:{{discourse_port}}'
+      - {{discourse_port}}:{{discourse_port}}
     restart: always
     volumes:
-      - '${PWD}/data/discourse_data:/bitnami/discourse'
+      - ${PWD}/data/discourse_data:/bitnami/discourse
     depends_on:
       - postgresql
       - redis
     environment:
-      # ALLOW_EMPTY_PASSWORD is recommended only for development.
       - DISCOURSE_HOST={{discourse_host}}
+      - DISCOURSE_EXTERNAL_HTTP_PORT_NUMBER={{discourse_external_port}}
+      - DISCOURSE_PORT_NUMBER={{discourse_port}}
+      - DISCOURSE_EMAIL={{email}}
+      # postgres
       - DISCOURSE_DATABASE_HOST={{postgres_host}}
       - DISCOURSE_DATABASE_PORT_NUMBER={{postgres_port}}
       - DISCOURSE_DATABASE_USER={{postgres_user}}
       - DISCOURSE_DATABASE_NAME={{postgres_db}}
       - DISCOURSE_DATABASE_PASSWORD={{postgres_password}}
+      # redis
       - DISCOURSE_REDIS_HOST={{redis_host}}
       - DISCOURSE_REDIS_PORT_NUMBER={{redis_port}}
-      - POSTGRESQL_CLIENT_POSTGRES_USER=postgres
+      - DISCOURSE_REDIS_PASSWORD={{redis_password}}
+      # create database for discourse
+      - POSTGRESQL_CLIENT_POSTGRES_USER={{postgres_user}}
+      - POSTGRESQL_CLIENT_POSTGRES_PASSWORD={{postgres_password}}
       - POSTGRESQL_CLIENT_CREATE_DATABASE_NAME={{postgres_db}}
       - POSTGRESQL_CLIENT_CREATE_DATABASE_EXTENSIONS=hstore,pg_trgm
-      # - DISCOURSE_SMTP_HOST={{smtp_host}}
-      # - DISCOURSE_SMTP_PORT={{smtp_port}}
-      # - DISCOURSE_SMTP_USER={{email}}
-      # - DISCOURSE_SMTP_PASSWORD={{smtp_password}}
-      # - DISCOURSE_SMTP_PROTOCOL={{smtp_protocol}}
+      # smtp
+      - DISCOURSE_SMTP_HOST={{smtp_host}}
+      - DISCOURSE_SMTP_PORT={{smtp_port}}
+      - DISCOURSE_SMTP_USER={{smtp_user}}
+      - DISCOURSE_SMTP_PASSWORD={{smtp_password}}
+      - DISCOURSE_SMTP_PROTOCOL={{smtp_protocol}}
+      - DISCOURSE_SMTP_AUTH={{smtp_auth}}
     <<: *network
     labels:
       - traefik.enable=true
@@ -67,28 +76,32 @@ services:
       
   sidekiq:
     image: docker.io/bitnami/discourse:2
+    container_name: sidekiq
     depends_on:
       - discourse
     restart: always
     volumes:
-      - '${PWD}/data/sidekiq_data:/bitnami/discourse'
+      - ${PWD}/data/sidekiq_data:/bitnami/discourse
     command: /opt/bitnami/scripts/discourse-sidekiq/run.sh
     environment:
-      # ALLOW_EMPTY_PASSWORD is recommended only for development.
-      - ALLOW_EMPTY_PASSWORD=yes
       - DISCOURSE_HOST={{discourse_host}}
+      # postgres
       - DISCOURSE_DATABASE_HOST={{postgres_host}}
       - DISCOURSE_DATABASE_PORT_NUMBER={{postgres_port}}
       - DISCOURSE_DATABASE_USER={{postgres_user}}
       - DISCOURSE_DATABASE_NAME={{postgres_db}}
       - DISCOURSE_DATABASE_PASSWORD={{postgres_password}}
+      # redis
       - DISCOURSE_REDIS_HOST={{redis_host}}
       - DISCOURSE_REDIS_PORT_NUMBER={{redis_port}}
-      # - DISCOURSE_SMTP_HOST={{smtp_host}}
-      # - DISCOURSE_SMTP_PORT={{smtp_port}}
-      # - DISCOURSE_SMTP_USER={{email}}
-      # - DISCOURSE_SMTP_PASSWORD={{smtp_password}}
-      # - DISCOURSE_SMTP_PROTOCOL={{smtp_protocol}}
+      - DISCOURSE_REDIS_PASSWORD={{redis_password}}
+      # smtp
+      - DISCOURSE_SMTP_HOST={{smtp_host}}
+      - DISCOURSE_SMTP_PORT={{smtp_port}}
+      - DISCOURSE_SMTP_USER={{smtp_user}}
+      - DISCOURSE_SMTP_PASSWORD={{smtp_password}}
+      - DISCOURSE_SMTP_PROTOCOL={{smtp_protocol}}
+      - DISCOURSE_SMTP_AUTH={{smtp_auth}}
     <<: *network
 
   traefik:
@@ -96,6 +109,7 @@ services:
     image: {{traefik_image}}:{{traefik_version}}
     command:
       - "--api.dashboard=true"
+      - "--api.debug=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.web.address=:80"
@@ -129,7 +143,7 @@ services:
       - traefik.http.routers.traefik.entrypoints=websecure
       - traefik.http.routers.traefik.service=api@internal
       - traefik.http.routers.traefik.tls.certresolver=le
-      - "traefik.http.middlewares.basic-auth.basicauth.users=admin:$$apr1$$jtkrgano$$SeKqInRVXEzuCp1MVM6y91"
+      - "traefik.http.middlewares.basic-auth.basicauth.users=admin:$$2y$$05$$GEMYoFlzMDV2i2AQYKb2iuF7Fy60rajmPPPnUs2uUxeiu0nMAufty"
       - traefik.http.routers.traefik.middlewares=basic-auth
       # Middlewares
       - traefik.http.middlewares.limit.buffering.maxRequestBodyBytes=100000000 # 100MB request body limit

@@ -1,5 +1,5 @@
 ---
-- hosts: instance
+- hosts: tag_env_production
   user: "{{ ansible_ssh_user }}"
   become: yes
   roles:
@@ -13,7 +13,7 @@
       - name: docker
       - name: docker-compose
 
-- hosts: instance
+- hosts: tag_env_production
   user: "{{ current_user }}"
   become: yes
   become_user: root

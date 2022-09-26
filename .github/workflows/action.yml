@@ -33,7 +33,7 @@ jobs:
         run: ansible-galaxy install -f -r roles/requirements.yml
 
       - name: Run ansible production playbook
-        run: ansible-playbook -e env=$TRIGGER_BRANCH -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e DOCKER_USERNAME=$DOCKER_USERNAME -e DOCKER_PASSWORD=$DOCKER_PASSWORD -e GH_TOKEN=$GH_TOKEN --vault-password-file vault_password -i inventories/production_aws_ec2.yml production.yml
+        run: ansible-playbook -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e DOCKER_USERNAME=$DOCKER_USERNAME -e DOCKER_PASSWORD=$DOCKER_PASSWORD -e GH_TOKEN=$GH_TOKEN --vault-password-file vault_password -i inventories/production_aws_ec2.yml playbook.yml
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
