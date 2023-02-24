@@ -104,6 +104,19 @@ services:
       - DISCOURSE_SMTP_AUTH={{smtp_auth}}
     <<: *network
 
+  backend:
+    container_name: backend
+    image: {{backend_image}}
+    ports:
+      - {{backend_port}}:3000
+    env_file: .env
+    <<: *network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.backend.rule=Host(`{{backend_host}}`)
+      - traefik.http.routers.backend.tls=true
+      - traefik.http.routers.backend.tls.certresolver=le
+
   traefik:
     container_name: traefik
     image: {{traefik_image}}:{{traefik_version}}

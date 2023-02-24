@@ -1,5 +1,7 @@
 # discourse
 
+> UPDATE: the repository will be updated to not only include Discourse, but other Poseidon DAO related services
+
 This repository contains Ansible setup and roles to manage infrastructure deployment and automated CI/CD for Poseion DAO Discourse instance configuration.
 
 ## Hosts
